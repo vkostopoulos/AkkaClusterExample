@@ -1,0 +1,67 @@
+version: '3.4'
+services:
+  lighthouse:
+    image: petabridge/lighthouse:v0.9.2
+    ports:
+      # Port 9110 is exposed so as to allow the Petrabridge.cmd client (https://cmd.petabridge.com/)
+      # to connect to it. The lighthouse includes the Petabridge cluster extension allowing one to
+      # easily view connected nodes
+      - '9110:9110'
+    environment:
+      ACTORSYSTEM: "akkaexample"
+      # The cluster IP (bit of a misnomer, here it's the hostname) is derived from the service name (lighthouse)
+      CLUSTER_IP: lighthouse
+      CLUSTER_PORT: 4053
+      CLUSTER_SEEDS: "akka.tcp://akkaexample@lighthouse:4053"
+  akkaexample.web:
+    # Injected by visual studio, which messes with the image
+    image: akkaexampleweb
+    build:
+      context: .
+      dockerfile: AkkaClusterExample.Web/Dockerfile
+      target: runner
+    ports:
+      # Api port
+      - "5051:5051"
+      # Map port 9110 to 9111. Port 9111 is used to connect to Petabridge.cmd for this node
+      - '9111:9110'
+    depends_on:
+      - akkaexample.worker.1
+      - akkaexample.worker.2
+      - lighthouse
+    environment:
+      ASPNETCORE_ENVIRONMENT: local
+      CLUSTER_IP: akkaexample.web
+      CLUSTER_PORT: 4053
+  akkaexample.worker.1:
+    # Injected by visual studio, which messes with the image
+    image: akkaexampleworker
+    build:
+      context: .
+      dockerfile: AkkaClusterExample.Worker/Dockerfile
+      target: runner
+    ports:      
+      # Map port 9110 to 9112. Port 9112 is used to connect to Petabridge.cmd for this node
+      - '9112:9110'
+    depends_on:      
+      - lighthouse
+    environment:
+      ASPNETCORE_ENVIRONMENT: local
+      CLUSTER_IP: akkaexample.worker.1
+      CLUSTER_PORT: 4053
+  akkaexample.worker.2:
+    # Injected by visual studio, which messes with the image
+    image: akkaexampleworker
+    build:
+      context: .
+      dockerfile: AkkaClusterExample.Worker/Dockerfile
+      target: runner
+    ports:
+      # Map port 9110 to 9112. Port 9112 is used to connect to Petabridge.cmd for this node
+      - '9113:9110'
+    depends_on:
+      - lighthouse
+    environment:
+      ASPNETCORE_ENVIRONMENT: local
+      CLUSTER_IP: akkaexample.worker.2
+      CLUSTER_PORT: 4053
